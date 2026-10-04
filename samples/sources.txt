@@ -1,0 +1,15 @@
+# Where every sample comes from: <name in samples/> <page of the original>. Written by fetch-samples.sh;
+# the converter links these pages in the headers of the descriptions.
+petstore.yaml               https://github.com/OAI/learn.openapis.org/blob/main/examples/v3.0/petstore.yaml
+petstore-expanded.yaml      https://github.com/OAI/learn.openapis.org/blob/main/examples/v3.0/petstore-expanded.yaml
+uspto.yaml                  https://github.com/OAI/learn.openapis.org/blob/main/examples/v3.0/uspto.yaml
+link-example.yaml           https://github.com/OAI/learn.openapis.org/blob/main/examples/v3.0/link-example.yaml
+callback-example.yaml       https://github.com/OAI/learn.openapis.org/blob/main/examples/v3.0/callback-example.yaml
+api-with-examples.yaml      https://github.com/OAI/learn.openapis.org/blob/main/examples/v3.0/api-with-examples.yaml
+webhook-example.yaml        https://github.com/OAI/learn.openapis.org/blob/main/examples/v3.1/webhook-example.yaml
+non-oauth-scopes.yaml       https://github.com/OAI/learn.openapis.org/blob/main/examples/v3.1/non-oauth-scopes.yaml
+tictactoe.yaml              https://github.com/OAI/learn.openapis.org/blob/main/examples/v3.1/tictactoe.yaml
+swagger-petstore-v3.yaml    https://github.com/swagger-api/swagger-petstore/blob/master/src/main/resources/openapi.yaml
+swagger-petstore-v2.json    https://petstore.swagger.io/v2/swagger.json
+grafana.json                https://github.com/grafana/grafana/blob/main/public/openapi3.json
+docker-engine.yaml          https://github.com/moby/moby/blob/master/api/swagger.yaml

@@ -1,0 +1,21 @@
+# build output
+out/
+bin/
+obj/
+
+# validation artefacts
+*.log
+
+# editor / IDE
+.idea/
+.vs/
+*.user
+.vscode/
+
+# scratch files
+*.tmp
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db

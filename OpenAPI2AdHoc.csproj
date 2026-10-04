@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <LangVersion>14</LangVersion>
+        <AssemblyName>OpenAPI2AdHoc</AssemblyName>
+        <RootNamespace>org.unirail</RootNamespace>
+        <InvariantGlobalization>true</InvariantGlobalization>
+        <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+        <!-- CS0618: `example` (singular) is obsolete in the reader, but OpenAPI 3.0 documents use it and it is read on purpose. -->
+        <NoWarn>$(NoWarn);CS0618</NoWarn>
+        <!-- Only src/ is the converter. AdHoc/*.cs are generated protocol descriptions, not code of this project. -->
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="src\**\*.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.OpenApi" Version="3.10.2" />
+        <PackageReference Include="Microsoft.OpenApi.YamlReader" Version="3.10.2" />
+    </ItemGroup>
+
+</Project>

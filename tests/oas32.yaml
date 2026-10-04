@@ -1,0 +1,70 @@
+# Not an upstream document: a synthetic one holding what OpenAPI 3.2 added and the converter maps - the QUERY
+# method and `additionalOperations`, `itemSchema` of a sequential media type, the tag hierarchy, the device
+# authorization flow, a named server - and a parent named twice (by `allOf` and by its own discriminator).
+# Convert and validate it after changing the converter:
+#   dotnet out/OpenAPI2AdHoc.dll tests tests/AdHoc && ./validate.sh tests/AdHoc
+openapi: 3.2.0
+info: {title: OpenAPI 3.2, version: "1"}
+servers:
+  - {url: 'https://api.example.com', name: prod, description: Production}
+tags:
+  - {name: animals, summary: Animals, kind: nav}
+  - {name: dogs, parent: animals}
+paths:
+  /animals:
+    query:
+      operationId: searchAnimals
+      tags: [animals]
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Filter'}
+      responses:
+        '200':
+          description: The animals found, one by one
+          content:
+            application/jsonl:
+              itemSchema: {$ref: '#/components/schemas/Animal'}
+    additionalOperations:
+      PURGE:
+        operationId: purgeAnimals
+        responses:
+          '204': {description: Purged}
+components:
+  securitySchemes:
+    device:
+      type: oauth2
+      deprecated: true
+      flows:
+        deviceAuthorization:
+          deviceAuthorizationUrl: https://example.com/device
+          tokenUrl: https://example.com/token
+          scopes: {read: Read, write: Write}
+  schemas:
+    Filter:
+      type: object
+      properties:
+        kind: {type: string}
+      patternProperties:
+        '^x-': {type: string}
+    Animal:
+      type: object
+      required: [kind]
+      discriminator:
+        propertyName: kind
+        mapping: {dog: '#/components/schemas/Dog', cat: '#/components/schemas/Cat'}
+      properties:
+        kind: {type: string}
+        name: {type: string}
+    Dog:
+      allOf:
+        - {$ref: '#/components/schemas/Animal'}
+        - type: object
+          properties:
+            barks: {type: boolean}
+    Cat:
+      allOf:
+        - {$ref: '#/components/schemas/Animal'}
+        - type: object
+          properties:
+            lives: {type: integer, format: uint8, maximum: 9}

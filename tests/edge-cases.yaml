@@ -1,0 +1,197 @@
+# Not an upstream document: a synthetic one holding what the real samples lack - every name conflict the
+# converter settles and every shape it has to rewrite. Convert and validate it after changing the converter:
+#   dotnet out/OpenAPI2AdHoc.dll tests tests/AdHoc && ./validate.sh tests/AdHoc
+openapi: 3.0.3
+info:
+  title: Edge cases
+  version: "1"
+  description: "A \"quoted\" description with <tags> & ampersands."
+paths:
+  /:                                  # the root path: an operation with no path segment
+    get:
+      operationId: root
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+  /noops:                             # a path item without operations
+    parameters:
+      - name: only
+        in: query
+        schema: {type: string}
+  /search:
+    get:
+      operationId: search             # an operation named like its path segment
+      parameters:
+        - name: path
+          in: query
+          schema: {type: string}
+        - name: q                     # a parameter described by `content`, not by `schema`
+          in: query
+          content:
+            application/json:
+              schema: {type: string}
+      responses:
+        '200':
+          description: ok
+          headers:
+            X-Rate-Limit:
+              schema: {type: integer}
+            X-Request-Id:             # a string header: kept as documentation
+              schema: {type: string}
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: {type: integer}
+        default:
+          description: any error
+  /search/{path}/search:              # a segment repeated deeper, and no operationId
+    get:
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema: {type: string}
+        - name: path                  # the same name from the query: two fields of one request pack
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: ok
+          headers:
+            X-Rate-Limit:             # the same header with another type
+              schema: {type: integer, format: int64}
+          content:
+            application/json:
+              schema:                 # three levels of lists
+                type: array
+                items:
+                  type: array
+                  items:
+                    type: array
+                    items: {type: string}
+  /Search:                            # differs from /search only by case
+    delete:
+      operationId: Search
+      responses:
+        '204':
+          description: gone
+components:
+  schemas:
+    File:                             # the name of an org.unirail.Meta type
+      type: object
+      properties:
+        File: {type: string}          # a field named like its pack
+        name: {type: string}
+        Client: {$ref: '#/components/schemas/Client'}
+        when: {$ref: '#/components/schemas/DateTime'}
+        ids:                          # a list of UUIDs: 16 bytes each, a pack of two halves
+          type: array
+          items: {type: string, format: uuid}
+        tags:
+          type: array
+          uniqueItems: true
+          items: {type: string, maxLength: 20}
+        matrix:                       # a map of maps of lists
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: array
+              items: {type: number, minimum: 0, maximum: 1}
+        op:                           # values that are not identifiers, and two that differ by case
+          type: string
+          enum: ["=", "!=", "<", "<=", ">", ">=", "like", "LIKE"]
+        level:
+          type: integer
+          enum: [0, 1, 2]
+        ratio: {type: number, minimum: 0, maximum: 100}        # integer bounds on a double
+        count: {type: integer, minimum: 0.5, maximum: 9.5}     # fractional bounds on an integer
+        fixed: {type: integer, minimum: 8000, maximum: 8000}   # not a range: a constant
+        status:                       # an inline enum next to a field `Status`; maxLength on an enum
+          type: string
+          enum: [on, off]
+          maxLength: 3
+        Status: {type: string}
+        reason:                        # nullable, and `null` is listed among the values
+          type: string
+          nullable: true
+          enum: [duplicate, "won't fix", null]
+        marker: {$ref: '#/components/schemas/Marker'}   # an object declared with no properties: its presence
+        anything: {}
+        free: {type: object}
+        meta: {$ref: '#/components/schemas/Anything'}
+        owner:
+          allOf:
+            - $ref: '#/components/schemas/Client'
+          description: wrapped ref
+        _links:
+          type: object
+          properties:
+            self: {type: string}
+        class: {type: string}
+        $ref_like: {type: string}
+    Client:                           # the names of the hosts
+      type: object
+      properties:
+        id: {type: integer, format: int64}
+    client:                           # differs from Client only by case
+      type: object
+      properties:
+        legacy: {type: boolean}
+    Server:
+      type: object
+      properties:
+        host: {type: string}
+    DateTime:
+      type: object
+      properties:
+        epoch: {type: integer, format: int64}
+    Duration: {type: integer, format: int64}
+    Set:
+      type: object
+      properties:
+        items:
+          type: array
+          items: {type: string}
+    file:                             # not a legal type name in C#
+      type: object
+      properties:
+        size: {type: integer}
+    Anything: {}
+    Marker:                           # empty by declaration, not "any JSON"
+      type: object
+      properties: {}
+    One:                              # an enum with one value
+      type: string
+      enum: [only]
+    Labels:                           # a schema that is a map of maps
+      type: object
+      additionalProperties:
+        type: object
+        additionalProperties: {type: string}
+    Shape:                            # a union with a discriminator: the alternatives do not inherit it
+      oneOf:
+        - $ref: '#/components/schemas/Circle'
+        - $ref: '#/components/schemas/Square'
+        - type: string
+      discriminator:
+        propertyName: kind
+        mapping:
+          circle: '#/components/schemas/Circle'
+          square: '#/components/schemas/Square'
+    Circle:
+      type: object
+      properties:
+        kind: {type: string}
+        radius: {type: number}
+    Square:
+      type: object
+      properties:
+        kind: {type: string}
+        side: {type: number}

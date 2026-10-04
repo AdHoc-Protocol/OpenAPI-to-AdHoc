@@ -1,0 +1,3 @@
+# Keep LF in the repository; shell scripts must stay LF to run on Linux and macOS.
+* text=auto eol=lf
+*.sh text eol=lf

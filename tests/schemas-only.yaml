@@ -1,0 +1,23 @@
+# Not an upstream document: a library of schemas with no operation at all. The converter still gives the
+# packs a connection: a pack travels only on a branch of one.
+openapi: 3.0.3
+info:
+  title: A library of schemas, no operations
+  version: "1"
+paths: {}
+components:
+  schemas:
+    Point:
+      type: object
+      required: [x, y]
+      properties:
+        x: {type: number, format: float}
+        y: {type: number, format: float}
+    Track:
+      type: object
+      properties:
+        name: {type: string, maxLength: 40}
+        points:
+          type: array
+          maxItems: 1000
+          items: {$ref: '#/components/schemas/Point'}

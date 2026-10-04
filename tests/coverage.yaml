@@ -1,0 +1,332 @@
+# Not an upstream document: a synthetic one that walks through the specification, one feature of every
+# kind the converter maps. Convert and validate it after changing the converter:
+#   dotnet out/OpenAPI2AdHoc.dll tests tests/AdHoc && ./validate.sh tests/AdHoc
+openapi: 3.1.0
+info:
+  title: Coverage
+  summary: Every feature once
+  description: A document that uses each part of the specification the converter maps.
+  termsOfService: https://example.com/terms
+  contact: {name: Team, url: 'https://example.com', email: team@example.com}
+  license: {name: Apache 2.0, identifier: Apache-2.0}
+  version: 2.0.0
+  x-audience: internal
+externalDocs: {description: The manual, url: 'https://example.com/docs'}
+servers:
+  - url: https://{region}.example.com/v2
+    description: Production
+    variables:
+      region: {default: eu, enum: [eu, us], description: The region}
+tags:
+  - name: orders
+    description: Orders of a shop
+    externalDocs: {url: 'https://example.com/orders'}
+  - name: events
+security:
+  - apiKey: []
+paths:
+  /orders:
+    summary: The orders
+    description: Everything about the orders of a shop.
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: Lists the orders
+      x-rate-limited: true
+      security: []                       # lifts the requirement of the API
+      servers:
+        - url: https://reports.example.com
+          description: The reporting replica
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - name: status
+          in: query
+          example: paid
+          schema: {$ref: '#/components/schemas/OrderStatus'}
+        - name: since
+          in: query
+          schema: {type: string, format: date}
+        - name: If-None-Match
+          in: header
+          schema: {type: string}
+      responses:
+        '200':
+          description: A page of orders
+          headers:
+            X-Total-Count: {schema: {type: integer, format: int64}, description: How many there are}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Orders'}
+          links:
+            first:
+              operationId: getOrder
+              parameters: {id: '$response.body#/0/id'}
+              description: The first order of the page
+        '304': {description: Not modified}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        default: {description: Any other failure}
+    post:
+      operationId: createOrder
+      tags: [orders]
+      requestBody:
+        description: The order to place
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Order'}
+          application/xml:
+            schema: {$ref: '#/components/schemas/LegacyOrder'}
+      callbacks:
+        paid:
+          '{$request.body#/callbackUrl}':
+            post:
+              summary: Tells that the order was paid
+              requestBody:
+                content:
+                  application/json:
+                    schema: {$ref: '#/components/schemas/Payment'}
+              responses:
+                '204': {description: Noted}
+      responses:
+        '201':
+          description: Placed
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Order'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/Invalid'}
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      parameters:
+        - {name: id, in: path, required: true, schema: {$ref: '#/components/schemas/OrderId'}}
+      responses:
+        '200':
+          description: The order
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Order'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    put:
+      operationId: replaceOrder
+      tags: [orders]
+      parameters:
+        - {name: id, in: path, required: true, schema: {$ref: '#/components/schemas/OrderId'}}
+      requestBody:                       # the body has an `id` too: two values, two fields
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Order'}
+      responses:
+        '200':
+          description: Replaced
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Order'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /orders/{id}/invoice:
+    get:
+      operationId: getInvoice
+      tags: [orders]
+      parameters:
+        - {name: id, in: path, required: true, schema: {$ref: '#/components/schemas/OrderId'}}
+      responses:
+        '200':
+          description: The invoice as a document
+          content:
+            application/pdf: {}          # a media type with no schema: raw bytes
+        '404': {$ref: '#/components/responses/NotFound'}
+  /events:
+    get:
+      operationId: watchEvents
+      tags: [events]
+      summary: The events of the shop, as they happen
+      responses:
+        '200':
+          description: A stream of events
+          content:
+            text/event-stream:
+              schema: {$ref: '#/components/schemas/Event'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /report:
+    get:
+      operationId: getReport
+      tags: [events]
+      summary: A report, whole or line by line
+      responses:
+        '200':
+          description: The report
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Report'}
+            application/jsonl:
+              schema: {$ref: '#/components/schemas/ReportLine'}
+webhooks:
+  orderShipped:
+    post:
+      operationId: orderShipped
+      parameters:
+        - {name: X-Signature, in: header, required: true, schema: {type: string, format: byte}}
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Order'}
+      responses:
+        '200': {description: Received}
+components:
+  securitySchemes:
+    apiKey: {type: apiKey, in: header, name: X-Api-Key}
+    oauth:
+      type: oauth2
+      description: The OAuth of the shop
+      flows:
+        clientCredentials:
+          tokenUrl: https://example.com/token
+          scopes: {'orders:read': Read the orders, 'orders:write': Change the orders}
+  parameters:
+    Tenant: {name: tenant, in: header, required: true, schema: {type: string, maxLength: 32}, description: The shop}
+    Limit:  {name: limit,  in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}, description: The size of a page}
+    Offset: {name: offset, in: query, schema: {type: integer, format: int64, minimum: 0}}
+  responses:
+    Unauthorized: {description: No valid credentials}
+    NotFound:
+      description: No such order
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Invalid:
+      description: The order cannot be accepted
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Problem'}
+  schemas:
+    OrderId: {type: string, format: uuid, description: The id of an order}
+    OrderStatus:
+      type: string
+      enum: [new, paid, shipped]
+      description: Where an order is
+    Priority:
+      type: integer
+      format: uint8
+      enum: [0, 1, 2]
+      x-enum-varnames: [LOW, NORMAL, HIGH]
+      x-enum-descriptions: [Whenever, In its turn, Before the others]
+    Quantity: {type: integer, format: uint16, minimum: 1, maximum: 999}
+    Orders:
+      type: array
+      maxItems: 100
+      items: {$ref: '#/components/schemas/Order'}
+    Tags:
+      type: object
+      maxProperties: 16
+      additionalProperties: {type: string, maxLength: 64}
+    Order:
+      type: object
+      required: [id, status, lines]
+      properties:
+        kind: {const: order}                         # a value that never varies: a constant
+        version: {type: integer, enum: [2]}
+        id: {$ref: '#/components/schemas/OrderId'}
+        status: {$ref: '#/components/schemas/OrderStatus'}
+        priority: {$ref: '#/components/schemas/Priority'}
+        placed: {type: string, format: date-time, readOnly: true}
+        due: {type: [string, 'null'], format: date}
+        openFrom: {type: string, format: time}
+        validFor: {type: string, format: duration}
+        callbackUrl: {type: string, format: uri, writeOnly: true}
+        email: {type: string, format: email, minLength: 3, maxLength: 254, pattern: '^.+@.+$'}
+        receipt: {type: string, contentEncoding: base64, maxLength: 4096}     # 3.1: bytes, said the JSON Schema way
+        total: {type: number, multipleOf: 0.01, minimum: 0}
+        weight: {type: number, format: float}
+        flags: {type: integer, format: uint32}
+        revision: {type: integer, format: uint64}
+        delta: {type: integer, format: int16}
+        level: {type: integer, format: int8, minimum: 0}
+        lines:
+          type: array
+          minItems: 1
+          items: {$ref: '#/components/schemas/Line'}
+        discounts:
+          type: array
+          maxItems: 5
+          items: {type: integer, minimum: 0, maximum: 100}
+        notes:
+          type: array
+          items: {type: [string, 'null'], maxLength: 200}
+        tags: {$ref: '#/components/schemas/Tags'}
+        scores:
+          type: object
+          additionalProperties: {type: integer, minimum: 0, maximum: 10}
+        customer:                                    # a union in a property: a pack of optional alternatives
+          oneOf:
+            - {type: string, description: The id of the customer}
+            - {$ref: '#/components/schemas/Customer'}
+        shipping:                                    # a composition in a property: a pack that inherits
+          allOf:
+            - {$ref: '#/components/schemas/Address'}
+            - type: object
+              properties:
+                instructions: {type: string}
+        payment:                                     # an object without `type`
+          properties:
+            method: {type: string, enum: [card, cash]}
+            paid: {type: boolean}
+        gift: {$ref: '#/components/schemas/Gift'}     # typed with a pack of constants only: a bool
+    LegacyOrder:
+      type: object
+      properties:
+        number: {type: integer}
+    Line:
+      type: object
+      required: [sku, quantity]
+      properties:
+        sku: {type: string}
+        quantity: {$ref: '#/components/schemas/Quantity'}
+        price: {type: number}
+      additionalProperties: {type: string}           # declared properties and a map of the rest
+    Customer:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+    Address:
+      type: object
+      properties:
+        street: {type: string}
+        city: {type: string}
+    Gift:
+      type: object
+      properties:
+        kind: {const: gift}
+    Payment:
+      type: object
+      properties:
+        order: {$ref: '#/components/schemas/OrderId'}
+        amount: {type: number}
+    Problem:
+      type: object
+      properties:
+        code: {type: integer}
+        message: {type: string}
+    Event:
+      type: object
+      properties:
+        at: {type: string, format: date-time}
+        order: {$ref: '#/components/schemas/OrderId'}
+        status: {$ref: '#/components/schemas/OrderStatus'}
+    Report:
+      type: object
+      properties:
+        lines:
+          type: array
+          items: {$ref: '#/components/schemas/ReportLine'}
+    ReportLine:
+      type: object
+      properties:
+        day: {type: string, format: date}
+        orders: {type: integer}
